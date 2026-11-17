@@ -12,7 +12,11 @@ router = APIRouter(prefix="/api/dispatch", tags=["请求分配"])
 
 service = DispatchService()
 
-LIST_FIELDS = ["策略编号", "目标域名", "分配算法", "权重因子", "节点亲和性", "负载阈值", "再平衡间隔", "溢出处理"]
+LIST_FIELDS = [
+    "策略编号", "目标域名", "分配算法", "权重因子", "节点亲和性", "负载阈值",
+    "再平衡间隔", "稳定窗口", "溢出处理", "优先级", "请求数量",
+    "当前结果编号", "当前结果版本", "待复核结果", "最近再平衡时间",
+]
 STATUSES = ["草稿", "策略验证中", "已启用", "已停用"]
 
 
@@ -28,6 +32,13 @@ def list_entries(
         raise HTTPException(status_code=400, detail="每页最多 200 条，请缩小分页范围")
     items, total = service.list_entries(keyword=keyword, status=status, page=page, size=size)
     return PageResult(items=items, total=total, page=page, size=size)
+
+
+@router.get("/export")
+def export_entries() -> dict[str, Any]:
+    """导出请求分配清单：返回当前过滤条件下的全量数据。"""
+    items, total = service.list_entries(page=1, size=10000)
+    return {"module": "dispatch", "total": total, "items": items}
 
 
 @router.get("/{entry_id}", response_model=dict)
@@ -56,10 +67,3 @@ def run_action(entry_id: int, payload: EntryPayload) -> ActionResult:
     if entry is None:
         return ActionResult(ok=False, message=message)
     return ActionResult(ok=True, message=message, entry=entry)
-
-
-@router.get("/export")
-def export_entries() -> dict[str, Any]:
-    """导出请求分配清单：返回当前过滤条件下的全量数据。"""
-    items, total = service.list_entries(page=1, size=10000)
-    return {"module": "dispatch", "total": total, "items": items}
